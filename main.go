@@ -12,7 +12,6 @@ import (
 // #include <stdlib.h>
 // #include <Rembedded.h>
 // #include <Rinterface.h>
-// #include <R_ext/RStartup.h>
 import "C"
 
 type RSession struct {
@@ -31,50 +30,88 @@ func NewRSession() *RSession {
 func (rs *RSession) R_ShowMessage() {
 }
 
-func (rs *RSession) R_Busy() {
+//export R_Busy
+func R_Busy(which C.int) {
+	print("Busy?")
+	//print(int(which))
 }
 
-func (rs *RSession) R_ReadConsole() {
+//export R_ShowMessage
+func R_ShowMessage(msg C.char) {
+	print("go callback")
+	print(msg)
 }
 
-func (rs *RSession) R_WriteConsole() {
+//export R_ReadConsole
+func R_ReadConsole(prompt *C.char, buf C.char, buflen C.int, hist C.int) C.int {
+	print("READ ME!")
+	prompt = C.CString("FOO> ")
+	return C.int(0)
 }
 
-func (rs *RSession) R_WriteConsoleEx() {
+//export R_WriteConsole
+func R_WriteConsole(buf C.char, buflen C.int) {
+	print("WRITE ME!")
+	print(C.GoString(&buf))
 }
 
-func (rs *RSession) R_ResetConsole() {
+//export R_WriteConsoleEx
+func R_WriteConsoleEx(buf C.char, buflen, otype C.int) {
+	print("WRITE ME!")
 }
 
-func (rs *RSession) R_FlushConsole() {
+//export R_ResetConsole
+func R_ResetConsole() {
+	print("RESET!!!")
 }
 
-func (rs *RSession) R_ClearErrConsole() {
+//export R_FlushConsole
+func R_FlushConsole() {
+	print("FLUSH!")
 }
 
-func (rs *RSession) R_ShowFiles() {
+//export R_ClearErrConsole
+func R_ClearErrConsole() {
+	print("CLEAR!")
 }
 
-func (rs *RSession) R_ChooseFile() {
+//export R_ShowFiles
+func R_ShowFiles(nfile C.int, file unsafe.Pointer, headers unsafe.Pointer, wtitle C.CString, del C.Rboolean, pager C.CString) {
 }
 
-func (rs *RSession) R_EditFile() {
+//export R_ChooseFile
+func R_ChooseFile(newFile C.int, buf C.CString, buflen C.int) C.int {
+	return C.int(0)
 }
 
-func (rs *RSession) R_EditFiles() {
+//export R_EditFiles
+func R_EditFiles(buf C.CString) C.int {
+	return C.int(0)
 }
 
-func (rs *RSession) R_loadhistory() {
+//export R_loadhistory
+func R_loadhistory(call, op, args, env C.SEXP) C.SEXP {
+	print("loadhistory is not implemented")
+	return C.R_NilValue
 }
 
-func (rs *RSession) R_savehistory() {
+//export R_savehistory
+func R_savehistory(call, op, args, env C.SEXP) C.SEXP {
+	print("loadhistory is not implemented")
+	return C.R_NilValue
 }
 
-func (rs *RSession) R_addhistory() {
+//export R_addhistory
+func R_addhistory(call, op, args, env C.SEXP) C.SEXP {
+	print("loadhistory is not implemented")
+	return C.R_NilValue
 }
 
-func (rs *RSession) R_Suicide() {
+/*
+//rexport R_Suicide
+func R_Suicide(msg *unsafe.Pointer) {
 }
+*/
 
 func (rs *RSession) start() {
 	argc := C.int(1)
@@ -93,9 +130,9 @@ func (rs *RSession) start() {
 	C.R_ReplDLLinit()
 	//C.Rf_mainloop()
 	for {
-		//if C.R_ReplDLLdo1() <= 0 {
-		//	break
-		//}
+		if C.R_ReplDLLdo1() <= 0 {
+			break
+		}
 	}
 
 }

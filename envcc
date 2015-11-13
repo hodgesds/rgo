@@ -1,0 +1,2 @@
+export CGO_CFLAGS="-I/usr/share/R -I/usr/share/R/include"
+export R_HOME=/usr/lib/R

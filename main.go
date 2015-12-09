@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"sync"
+	//"sync"
 	//"os"
 	//"unsafe"
 )
@@ -12,82 +12,96 @@ import (
 // #include <stdlib.h>
 // #include <Rembedded.h>
 // #include <Rinterface.h>
+// #include <Rinternals.h>
+// #include <Rversion.h>
+// #include <R.h>
 import "C"
 
-type RSession struct {
-	Stdin chan interface{}
-	Stout chan interface{}
-}
-
-func NewRSession() *RSession {
-	in := make(chan interface{})
-	out := make(chan interface{})
-	rs := &RSession{in, out}
-	go rs.start()
-	return rs
-}
-
-func (rs *RSession) R_ShowMessage() {
-}
+//# for reference: pp 159ish
+//# https://cran.r-project.org/doc/manuals/r-release/R-exts.pdf
+//# interrupt handling: pp 145 R_ext/Utils.h
 
 //export R_Busy
 func R_Busy(which C.int) {
-	print("Busy?")
-	//print(int(which))
+	if int(which) == 0 {
+		print("thinking...\n")
+	} else {
+		print("that was easy!\n")
+	}
 }
 
-//export R_ShowMessage
-func R_ShowMessage(msg C.char) {
-	print("go callback")
-	print(msg)
+/* refer to system.c */
+
+//xxport R_ReadConsole
+//func R_ReadConsole(prompt *C.char, buf *C.char, buflen C.int, hist C.int) C.int {
+//	fmt.Println("gog:> ")
+//	//return TrueReadConsole(prompt, (char *) buf, len, addtohistory)
+//
+//	var input string
+//	fmt.Scanln(&input)
+//	fmt.Println("in:", input)
+//	//fmt.Scanln(buf)
+//	buf = C.CString(input)
+//
+//	fmt.Println("BUF:", *buf)
+//	fmt.Println("BUFLEN:", int(buflen))
+//	buflen = C.int(len(C.GoString(buf)))
+//	//buflen = C.int(len(buf))
+//
+//	//C.R_ProcessEvents()
+//
+//	return C.int(2)
+//}
+
+//export R_ProcessEvents
+func R_ProcessEvents() {
+	fmt.Println("event!")
 }
 
-//export R_ReadConsole
-func R_ReadConsole(prompt *C.char, buf C.char, buflen C.int, hist C.int) C.int {
-	print("READ ME!")
-	prompt = C.CString("FOO> ")
-	return C.int(0)
-}
+/*
+R_ProcessEvents();
+    TrueWriteConsole(buf, len);
+*/
 
 //export R_WriteConsole
 func R_WriteConsole(buf C.char, buflen C.int) {
-	print("WRITE ME!")
+	print("WRITE ME!\n")
 	print(C.GoString(&buf))
 }
 
 //export R_WriteConsoleEx
-func R_WriteConsoleEx(buf C.char, buflen, otype C.int) {
-	print("WRITE ME!")
+func R_WriteConsoleEx(buf C.char, buflen C.int, otype C.int) {
+	print("WRITE ME!\n")
+	print(C.GoString(&buf))
 }
 
 //export R_ResetConsole
 func R_ResetConsole() {
-	print("RESET!!!")
 }
 
 //export R_FlushConsole
 func R_FlushConsole() {
-	print("FLUSH!")
+	print("FLUSH!\n")
 }
 
 //export R_ClearErrConsole
 func R_ClearErrConsole() {
-	print("CLEAR!")
+	print("CLEAR!\n")
 }
 
-//export R_ShowFiles
-func R_ShowFiles(nfile C.int, file unsafe.Pointer, headers unsafe.Pointer, wtitle C.CString, del C.Rboolean, pager C.CString) {
-}
+//xxport R_ShowFiles
+//func R_ShowFiles(nfile C.int, file unsafe.Pointer, headers unsafe.Pointer, wtitle C.String, del C.Rboolean, pager C.String) {
+//}
 
-//export R_ChooseFile
-func R_ChooseFile(newFile C.int, buf C.CString, buflen C.int) C.int {
-	return C.int(0)
-}
+//xxport R_ChooseFile
+//func R_ChooseFile(newFile C.int, buf C.String, buflen C.int) C.int {
+//	return C.int(0)
+//}
 
-//export R_EditFiles
-func R_EditFiles(buf C.CString) C.int {
-	return C.int(0)
-}
+//xxport R_EditFiles
+//func R_EditFiles(buf C.CString) C.int {
+//	return C.int(0)
+//}
 
 //export R_loadhistory
 func R_loadhistory(call, op, args, env C.SEXP) C.SEXP {
@@ -113,7 +127,7 @@ func R_Suicide(msg *unsafe.Pointer) {
 }
 */
 
-func (rs *RSession) start() {
+func StartR() {
 	argc := C.int(1)
 	argv := make([]*C.char, 7)
 	argv[0] = C.CString("rgo")
@@ -124,14 +138,22 @@ func (rs *RSession) start() {
 	argv[5] = C.CString("--slave")
 	argv[6] = C.CString("--silent")
 
-	//_ := os.Getenv("R_HOME") or C.get_R_HOME()
+	//print(C.ifp)
+	//print(C.R_Consolefile)
+
+	//C.R_SignalHandlers = C.int(0)
+
 	C.Rf_initEmbeddedR(argc, &argv[0])
 
 	C.R_ReplDLLinit()
-	//C.Rf_mainloop()
+
 	for {
+		fmt.Println("loop")
 		if C.R_ReplDLLdo1() <= 0 {
+			C.Rf_endEmbeddedR(0)
 			break
+		} else {
+			C.R_ProcessEvents()
 		}
 	}
 
@@ -151,12 +173,8 @@ func (rs *RSession) start() {
 
 func main() {
 	fmt.Println("Yes we are inside of Go")
-	var wg sync.WaitGroup
-	wg.Add(1)
-	i := 0
-	for i < 1 {
-		NewRSession()
-		i++
-	}
-	wg.Wait()
+	major := string(C.R_MAJOR)
+	minor := string(C.R_MINOR)
+	fmt.Println("About to start", major, minor)
+	StartR()
 }
